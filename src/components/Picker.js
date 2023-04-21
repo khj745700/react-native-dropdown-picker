@@ -14,16 +14,16 @@ import {
     TouchableOpacity,
     Text,
     Image,
+    FlatList,
     TextInput,
     Dimensions,
+    ScrollView,
     Modal,
     ActivityIndicator,
     BackHandler,
     Platform,
     StyleSheet,
 } from 'react-native';
-
-import { FlatList, ScrollView } from 'react-native-gesture-handler';
 
 const { height: WINDOW_HEIGHT } = Dimensions.get('window');
 
@@ -233,11 +233,11 @@ function Picker({
         setNecessaryItems(state => {
             return [...state].map(item => {
                 const _item = items.find(x => x[_schema.value] === item[_schema.value]);
-                
+
                 if (_item) {
                     return {...item, ..._item};
                 }
-                
+
                 return item;
             });
         });
@@ -251,7 +251,7 @@ function Picker({
             setNecessaryItems(state => {
                 if (value === null || (Array.isArray(value) && value.length === 0))
                     return [];
-                
+
                 let _state = [...state].filter(item => value.includes(item[_schema.value]));
 
                 const newItems = value.reduce((accumulator, currentValue) => {
@@ -259,7 +259,7 @@ function Picker({
 
                     if (index === -1) {
                         const item = items.find(item => item[_schema.value] === currentValue);
-                    
+
                         if (item) {
                             return [...accumulator, item];
                         }
@@ -282,7 +282,7 @@ function Picker({
                     state.push(item);
                 }
             }
-            
+
             setNecessaryItems(state);
         }
 
@@ -405,7 +405,7 @@ function Picker({
                     });
                 } else {
                     const index = sortedItems.findIndex(item => item[_schema["value"]] === value);
-                    
+
                     if (index > -1)
                         flatListRef.current?.scrollToIndex?.({
                             index,
@@ -454,13 +454,12 @@ function Picker({
         } else {
             if (disableLocalSearch)
                 return sortedItems;
-    
+
             const values = [];
             const normalizeText = (text) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
             let results = sortedItems.filter(item => {
-                const label = String(item[_schema.label]).toLowerCase();
-
+                const label = item[_schema.label].toLowerCase();
                 if (
                     label.includes(searchText.toLowerCase())
                     || searchWithRegionalAccents && normalizeText(label).includes(searchText.toLowerCase())
@@ -482,7 +481,7 @@ function Picker({
                 results.splice(index, 0, parent);
             });
 
-            if ((results.length === 0 || results.findIndex(item => String(item[_schema.label]).toLowerCase() === searchText.toLowerCase()) === -1) && addCustomItem) {
+            if ((results.length === 0 || results.findIndex(item => item[_schema.label].toLowerCase() === searchText.toLowerCase()) === -1) && addCustomItem) {
                 results.push({
                     [_schema.label]: searchText,
                     [_schema.value]: searchText.replace(' ', '-'),
@@ -583,7 +582,7 @@ function Picker({
 
         if (isNull)
             return null;
-        
+
         try {
             return necessaryItems.find(item => item[_schema.value] === _value);
         } catch (e) {
@@ -602,11 +601,11 @@ function Picker({
         if (multiple)
             if (item.length > 0) {
                 let mtext = _multipleText;
-                
+
                 if (typeof mtext !== 'string') {
                     mtext = mtext[item.length] ?? mtext.n;
                 }
-                
+
                 return mtext.replace('{count}', item.length);
             } else
                 return fallback;
@@ -1022,7 +1021,7 @@ function Picker({
     const _itemKey = useMemo(() => {
         if (itemKey === null)
             return _schema.value;
-        
+
         return itemKey;
     }, [itemKey, _schema]);
 
@@ -1115,7 +1114,7 @@ function Picker({
                 </View>
             );
         }
-        
+
         return <BadgeListEmptyComponent />;
     }, [__renderBadge, extendableBadgeContainerStyle, extendableBadgeItemContainerStyle]);
 
@@ -1124,10 +1123,10 @@ function Picker({
      * @returns {JSX.Element}
      */
      const BadgeBodyComponent = useMemo(() => {
-        if (extendableBadgeContainer) { 
+        if (extendableBadgeContainer) {
             return <ExtendableBadgeContainer selectedItems={selectedItems} />
         }
-        
+
         return (
             <FlatList
                 ref={setBadgeFlatListRef}
@@ -1702,7 +1701,7 @@ function Picker({
     const onRequestCloseModal = useCallback(() => {
         setOpen(false);
     }, []);
-    
+
     /**
      * The dropdown flatlist component.
      * @returns {JSX.Element}
@@ -1710,7 +1709,7 @@ function Picker({
     const DropDownFlatListComponent = useMemo(() => (
         <FlatList
             ref={flatListRef}
-            style={styles.flex}
+            style={[styles.flex, {}]}
             contentContainerStyle={THEME.flatListContentContainer}
             ListEmptyComponent={_ListEmptyComponent}
             data={_items}
@@ -1740,7 +1739,7 @@ function Picker({
     const DropDownScrollViewComponent = useMemo(() => {
         return (
             <ScrollView ref={scrollViewRef} nestedScrollEnabled={true} stickyHeaderIndices={stickyHeaderIndices} {...scrollViewProps}>
-                {_items.map((item, index) => { 
+                {_items.map((item, index) => {
                     return (
                         <Fragment key={item[_itemKey]}>
                             {index > 0 && ItemSeparatorComponent()}
@@ -1759,10 +1758,12 @@ function Picker({
      */
     const DropDownModalComponent = useMemo(() => (
         <Modal animationType={modalAnimationType} visible={open} presentationStyle="fullScreen" onRequestClose={onRequestCloseModal} {...modalProps}>
-            <SafeAreaView style={_modalContentContainerStyle}>
-                {SearchComponent}
-                {DropDownFlatListComponent}
-            </SafeAreaView>
+            <TouchableOpacity onPress={() => {setOpen(false); setValue(null);}} style={{backgroundColor:'rgba(0,0,0,0.5)', width:'100%', height:'100%'}} activeOpacity={1}>
+                <View style={_modalContentContainerStyle}>
+                    {SearchComponent}
+                    {DropDownFlatListComponent}
+                </View>
+            </TouchableOpacity>
         </Modal>
     ), [open, SearchComponent, _modalContentContainerStyle, modalProps]);
 
@@ -1809,16 +1810,13 @@ function Picker({
     const pointerEvents = useMemo(() => disabled ? "none" : "auto", [disabled]);
 
     return (
-        <>
-            <View style={_containerStyle} {...containerProps}>
-                <TouchableOpacity style={_style} onPress={__onPress} onLayout={__onLayout} {...props} ref={onRef} pointerEvents={pointerEvents} disabled={disabled} testID={testID}>
-                    {_BodyComponent}
-                    {_ArrowComponent}
-                </TouchableOpacity>
-
-                {DropDownBodyComponent}
-            </View>
-        </>
+        <View style={_containerStyle} {...containerProps}>
+            <TouchableOpacity style={_style} onPress={__onPress} onLayout={__onLayout} {...props} ref={onRef} pointerEvents={pointerEvents} disabled={disabled} testID={testID}>
+                {_BodyComponent}
+                {_ArrowComponent}
+            </TouchableOpacity>
+            {DropDownBodyComponent}
+        </View>
     );
 }
 
